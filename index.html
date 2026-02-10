@@ -381,8 +381,8 @@ let nextTrackUrl = null;
 let isPlaying = false;
 
 /* ======================================================
-   RAGA KNOWLEDGE BASE (Local Fallback)
-   Prevents the AI from hallucinating fake Ragas or bad BPMs.
+   RAGA KNOWLEDGE BASE (Safety Net)
+   If AI fails or hallucinates, we use these hard-coded values.
 ====================================================== */
 const RAGA_MAP = {
     "Raga Therapy (Calming)": { raga: "Raga Darbari", bpm: "60", inst: "Bansuri Flute, Tanpura", mood: "Meditative" },
@@ -507,8 +507,8 @@ async function generateFreshTrack() {
 ====================================================== */
 async function runManual() {
     const btn = document.getElementById('btn-manual');
-    const notes = document.getElementById('man-prompt').value; // e.g. "Sad because rain"
-    const type = document.getElementById('therapy-type').value; // e.g. "Raga Therapy (Calming)"
+    const notes = document.getElementById('man-prompt').value; 
+    const type = document.getElementById('therapy-type').value; 
     const goal = document.getElementById('therapy-goal').value;
     const smart = document.getElementById('man-smart').checked;
     
@@ -517,19 +517,17 @@ async function runManual() {
     // 1. Get Base Musical Theory from Local Map (Safety Net)
     const theory = RAGA_MAP[type] || RAGA_MAP["Raga Therapy (Calming)"];
     
-    // 2. AI Logic
+    // Default fallback prompt
     let finalPrompt = `${theory.raga} ${theory.bpm}bpm ${theory.inst}`;
 
     if(smart) {
-        // STRICT System Prompt to stop the AI from writing essays
+        // STRICT System Prompt
         const sys = `You are a Clinical Music API. 
         Task: Merge the Clinical Protocol with Patient Notes to create a Music Prompt.
         
         STRICT RULES:
-        1. NO <think> tags.
-        2. NO Markdown (no \`\`\`).
-        3. NO Explanations.
-        4. Output format: <out>Raga Name, Instrument, BPM, Mood</out>
+        1. NO Markdown.
+        2. Output format: <out>Raga Name, Instrument, BPM, Mood</out>
         
         Reference Data:
         - If Sad/Calming: Use Raga Darbari or Raga Bhairavi (60-70 BPM).
@@ -539,6 +537,7 @@ async function runManual() {
 
         try {
             const res = await callLLM(sys, "Generate Prompt");
+            // Only use AI result if it successfully gave us an <out> tag
             if(res && res.length > 5) {
                 finalPrompt = res;
             }
@@ -562,15 +561,16 @@ async function runManual() {
 }
 
 /* ======================================================
-   AI PARSING (THE CLEANER)
+   AI PARSING (THE CRITICAL FIX)
 ====================================================== */
 async function callLLM(sys, user) {
     try {
         const payload = {
             model: "microsoft/phi-4-mini-reasoning", 
             messages: [{role:"system", content:sys}, {role:"user", content:user}],
-            temperature: 0.1, // FROZEN creativity to prevent chatting
-            max_tokens: 200
+            temperature: 0.1, 
+            // INCREASED TO 1500: Allows the model to finish "Thinking" so we can delete the thought block.
+            max_tokens: 1500 
         };
 
         const r = await fetch(LLM_ENDPOINT, {
@@ -582,18 +582,18 @@ async function callLLM(sys, user) {
         const d = await r.json();
         let content = d.choices[0].message.content;
 
-        // 1. KILL the <think> block
-        content = content.replace(/<think>[\s\S]*?<\/think>/gi, "");
+        // 1. KILL the <think> block (Robust Regex)
+        // This handles cases where </think> might be malformed or missing
+        content = content.replace(/<think>[\s\S]*?(<\/think>|$)/gi, "");
         
-        // 2. KILL Markdown code blocks (```plaintext ...)
+        // 2. KILL Markdown code blocks
         content = content.replace(/```[\s\S]*?```/g, (match) => {
-            // If the tag is inside the code block, extract it
             if(match.includes("<out>")) return match; 
             return ""; 
         });
-        content = content.replace(/```/g, ""); // Remove stray backticks
+        content = content.replace(/```/g, ""); 
 
-        // 3. Extract <out>
+        // 3. Extract <out> tag content
         const match = content.match(/<out>(.*?)<\/out>/is);
         if(match) return match[1].trim();
 
