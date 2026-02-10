@@ -1,207 +1,548 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>ACE-Step Studio</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-PDAI | Infinite Radio</title>
 
-    <style>
-        body{
-            margin:0;
-            background:#0f0f0f;
-            color:white;
-            font-family:Arial, Helvetica, sans-serif;
-            padding:30px;
-        }
+<style>
+/* ======================================================
+   DESIGN SYSTEM: "Cyber-Glass"
+====================================================== */
+:root {
+    --primary: #8b5cf6;       /* Violet */
+    --accent: #d946ef;        /* Pink */
+    --success: #4ade80;       /* Green */
+    --glass: rgba(15, 23, 42, 0.9);
+    --border: rgba(255, 255, 255, 0.1);
+    --font: 'Segoe UI', system-ui, sans-serif;
+}
 
-        h1{
-            margin-bottom:20px;
-        }
+body {
+    margin: 0;
+    height: 100vh;
+    font-family: var(--font);
+    background: radial-gradient(circle at center, #0f172a, #000);
+    color: white;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
 
-        textarea{
-            width:100%;
-            height:90px;
-            background:#1a1a1a;
-            border:1px solid #333;
-            color:white;
-            padding:10px;
-            margin-bottom:10px;
-            resize:vertical;
-        }
+#bgCanvas {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: 0; pointer-events: none;
+}
 
-        button{
-            padding:12px 18px;
-            margin-top:10px;
-            background:#4CAF50;
-            border:none;
-            color:white;
-            cursor:pointer;
-            font-weight:bold;
-        }
+/* ======================================================
+   VIEW MANAGER
+====================================================== */
+.view-section {
+    display: none;
+    width: 100%; height: 100%;
+    position: relative; z-index: 10;
+    flex-direction: column;
+    justify-content: center; align-items: center;
+    animation: fadeIn 0.4s ease-out;
+}
+.view-section.active { display: flex; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        .toggle{
-            margin:10px 0;
-        }
+/* ======================================================
+   COMPONENTS
+====================================================== */
+.card {
+    background: var(--glass);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 0 50px rgba(0,0,0,0.5);
+    max-width: 500px; width: 90%;
+    text-align: center;
+}
 
-        .card{
-            margin-top:20px;
-            padding:15px;
-            background:#1a1a1a;
-            border-radius:8px;
-            border:1px solid #2a2a2a;
-        }
+.btn {
+    padding: 12px 24px;
+    border-radius: 10px;
+    border: none;
+    font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: 0.2s;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%;
+}
+.btn-primary {
+    background: linear-gradient(90deg, var(--primary), var(--accent));
+    color: white;
+    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+}
+.btn-primary:hover { transform: scale(1.02); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 
-        .skeleton{
-            height:20px;
-            background:linear-gradient(90deg,#222,#333,#222);
-            background-size:200% 100%;
-            animation:shine 1.2s infinite;
-            margin-bottom:10px;
-            border-radius:4px;
-        }
+.input-group { margin-bottom: 20px; text-align: left; }
+.label { font-size: 12px; color: #94a3b8; margin-bottom: 5px; display: block; text-transform: uppercase; letter-spacing: 1px; }
+input, textarea, select {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    padding: 12px;
+    border-radius: 8px;
+    color: white; font-family: inherit; font-size: 14px;
+    box-sizing: border-box;
+}
+input:focus { outline: none; border-color: var(--primary); }
 
-        @keyframes shine{
-            0%{background-position:200% 0;}
-            100%{background-position:-200% 0;}
-        }
+/* Dashboard Specifics */
+.dash-container {
+    display: flex; gap: 20px; width: 90%; max-width: 1200px; height: 80vh;
+}
+.sidebar {
+    width: 250px; background: var(--glass);
+    border: 1px solid var(--border); border-radius: 20px;
+    padding: 20px; display: flex; flex-direction: column; gap: 10px;
+}
+.main-area {
+    flex: 1; background: var(--glass);
+    border: 1px solid var(--border); border-radius: 20px;
+    padding: 30px; overflow-y: auto; position: relative;
+}
 
-        audio{
-            width:100%;
-            margin-top:10px;
-        }
+.nav-item {
+    padding: 15px; border-radius: 10px; cursor: pointer;
+    color: #94a3b8; transition: 0.2s; display: flex; gap: 10px;
+}
+.nav-item:hover, .nav-item.active { background: rgba(139, 92, 246, 0.15); color: white; }
 
-        .badge{
-            font-size:12px;
-            padding:4px 8px;
-            background:#333;
-            border-radius:4px;
-            display:inline-block;
-            margin-bottom:10px;
-        }
-    </style>
+.live-badge {
+    position: absolute; top: 30px; right: 30px;
+    background: rgba(74, 222, 128, 0.1); color: var(--success);
+    border: 1px solid rgba(74, 222, 128, 0.3);
+    padding: 5px 12px; border-radius: 20px; font-size: 12px;
+    display: none; align-items: center; gap: 6px;
+}
+.live-dot { width: 8px; height: 8px; background: var(--success); border-radius: 50%; animation: pulse 1.5s infinite; }
+
+/* Console */
+.console-box {
+    background: #000; border: 1px solid #333;
+    padding: 15px; border-radius: 8px;
+    height: 180px; overflow-y: auto;
+    font-family: 'Consolas', monospace; font-size: 12px;
+    color: var(--success); margin-top: 20px; text-align: left;
+}
+.log-line { margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 2px; }
+.log-ts { color: #64748b; margin-right: 8px; }
+
+/* Player Container */
+#auto-player-container {
+    margin-top:20px; display:none; 
+    background: rgba(139, 92, 246, 0.1); 
+    border: 1px solid var(--primary);
+    padding: 15px; border-radius: 10px;
+}
+
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+</style>
 </head>
 
 <body>
 
-<h1>🎵 ACE-Step Studio</h1>
+<canvas id="bgCanvas"></canvas>
 
-<textarea id="prompt" placeholder="Describe your music style..."></textarea>
+<div id="view-config" class="view-section active">
+    <div class="card">
+        <h1 style="margin-bottom:10px;">AI-PDAI Setup</h1>
+        <p style="opacity:0.7; font-size:14px; margin-bottom:30px;">
+            Enter your Cloud Tunnel URL (Ngrok/Cloudflare) to connect the Intelligence Engine.
+        </p>
+        
+        <div class="input-group">
+            <span class="label">LLM Server URL</span>
+            <input type="text" id="api-url" placeholder="https://random-name.trycloudflare.com">
+        </div>
 
-<textarea id="lyrics" placeholder="Paste lyrics here (optional)..."></textarea>
-
-<div class="toggle">
-    <label>
-        <input type="checkbox" id="useLLM">
-        Smart Mode (AI planning & enhancement)
-    </label>
+        <button class="btn btn-primary" onclick="saveConfig()">Connect & Launch Studio</button>
+        <div style="margin-top:15px; font-size:12px; opacity:0.5;">
+            Example: https://cool-tunnel.ngrok-free.app/v1/chat/completions
+        </div>
+    </div>
 </div>
 
-<button onclick="generate()">Generate Music</button>
+<div id="view-dash" class="view-section">
+    <div class="dash-container">
+        
+        <div class="sidebar">
+            <h2 style="margin:0 0 20px 0;">AI-PDAI</h2>
+            <div class="nav-item active" onclick="showTab('auto')">🤖 Infinite Radio</div>
+            <div class="nav-item" onclick="showTab('manual')">🎛️ Manual Studio</div>
+            <div class="nav-item" onclick="location.reload()" style="margin-top:auto; color:#ef4444;">🔌 Disconnect</div>
+        </div>
 
-<div id="results"></div>
+        <div class="main-area">
+            
+            <div id="tab-auto">
+                <div class="live-badge" id="live-indicator">
+                    <div class="live-dot"></div> LIVE BROADCAST
+                </div>
+
+                <h1 style="margin-top:0;">Infinite Context Radio</h1>
+                <p style="opacity:0.6; margin-bottom:25px;">
+                    Gapless AI Radio. Generates the next track while the current one plays.
+                </p>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom:25px;">
+                    <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:10px;">
+                        <div class="label">Location</div>
+                        <div id="stat-loc" style="font-weight:bold;">--</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:10px;">
+                        <div class="label">Weather</div>
+                        <div id="stat-wea" style="font-weight:bold;">--</div>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:10px;">
+                        <div class="label">Next Track Status</div>
+                        <div id="stat-next" style="font-weight:bold; color:#facc15;">Idle</div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <span class="label">Business Type</span>
+                    <select id="biz-type">
+                        <option value="Luxury Hotel Lobby">Luxury Hotel Lobby</option>
+                        <option value="Busy Cafe">Busy Urban Cafe</option>
+                        <option value="Retail Store">Fashion Retail Store</option>
+                        <option value="Yoga Studio">Yoga & Wellness Center</option>
+                    </select>
+                </div>
+
+                <button id="btn-stream" class="btn btn-primary" onclick="startGaplessRadio()">
+                    Start Infinite Radio
+                </button>
+
+                <div id="auto-player-container">
+                    <div class="label">Now Playing</div>
+                    <audio id="player-main" controls autoplay style="width:100%;"></audio>
+                </div>
+
+                <div class="console-box" id="console">
+                    <div class="log-line">System Ready. Connect LLM to start.</div>
+                </div>
+            </div>
+
+            <div id="tab-manual" style="display:none;">
+                <h1 style="margin-top:0;">Manual Generator</h1>
+                <div class="input-group">
+                    <span class="label">Prompt</span>
+                    <textarea id="man-prompt" style="height:80px;" placeholder="Describe the sound..."></textarea>
+                </div>
+                <div class="input-group">
+                    <span class="label">Lyrics (Optional)</span>
+                    <textarea id="man-lyrics" style="height:60px;" placeholder="Vocal lyrics..."></textarea>
+                </div>
+                <button id="btn-manual" class="btn btn-primary" onclick="runManual()">Generate Once</button>
+                <div id="man-player" style="margin-top:20px;"></div>
+            </div>
+
+        </div>
+    </div>
+</div>
 
 <script>
-const API = "https://emusic.emogi.space";
+/* ======================================================
+   CONFIG & STATE
+====================================================== */
+let LLM_ENDPOINT = "";
+const MUSIC_API = "https://emusic.emogi.space";
+let nextTrackUrl = null; // Buffer for the next song
+let isPlaying = false;
 
-function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+// Load Config
+window.onload = () => {
+    const saved = localStorage.getItem("pdai_llm_url");
+    if(saved) document.getElementById('api-url').value = saved;
+};
 
-async function generate(){
+function saveConfig() {
+    let url = document.getElementById('api-url').value.trim();
+    if(!url) return alert("Please enter a valid URL");
+    
+    // Fix URL formatting
+    if(url.endsWith("/")) url = url.slice(0, -1);
+    if(!url.includes("/v1/chat/completions")) url += "/v1/chat/completions";
+    
+    LLM_ENDPOINT = url;
+    localStorage.setItem("pdai_llm_url", document.getElementById('api-url').value);
+    
+    document.getElementById('view-config').classList.remove('active');
+    document.getElementById('view-dash').classList.add('active');
+    log("Connected to AI Tunnel: " + LLM_ENDPOINT);
+}
 
-    const prompt = document.getElementById("prompt").value.trim();
-    const lyrics = document.getElementById("lyrics").value.trim();
-    const useLLM = document.getElementById("useLLM").checked;
+function showTab(id) {
+    document.getElementById('tab-auto').style.display = (id === 'auto' ? 'block' : 'none');
+    document.getElementById('tab-manual').style.display = (id === 'manual' ? 'block' : 'none');
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    event.target.classList.add('active');
+}
 
-    if(!prompt){
-        alert("Please enter a music description.");
-        return;
+/* ======================================================
+   GAPLESS RADIO LOGIC
+====================================================== */
+function log(msg, type="info") {
+    const c = document.getElementById('console');
+    const ts = new Date().toLocaleTimeString().split(' ')[0];
+    const color = type === 'error' ? '#ef4444' : (type === 'success' ? '#4ade80' : '#cbd5e1');
+    c.innerHTML += `<div class="log-line" style="color:${color}"><span class="log-ts">[${ts}]</span> ${msg}</div>`;
+    c.scrollTop = c.scrollHeight;
+}
+
+// 1. Start the Radio
+async function startGaplessRadio() {
+    if(isPlaying) return;
+    isPlaying = true;
+    
+    const btn = document.getElementById('btn-stream');
+    btn.disabled = true;
+    btn.innerText = "Broadcasting...";
+    document.getElementById('live-indicator').style.display = 'flex';
+    document.getElementById('auto-player-container').style.display = 'block';
+
+    // Unlock Audio Context
+    const player = document.getElementById('player-main');
+    player.play().catch(() => {}); // Dummy play to unlock
+
+    // Start Cycle
+    log("🚀 Starting Radio Engine...", "success");
+    await playNext(); // Generate and play Track 1
+}
+
+// 2. Play Current & Pre-load Next
+async function playNext() {
+    const player = document.getElementById('player-main');
+    
+    // Check if we have a buffered track
+    if (nextTrackUrl) {
+        log("▶️ Playing Buffered Track", "success");
+        player.src = nextTrackUrl;
+        player.play();
+        nextTrackUrl = null; // Clear buffer
+    } else {
+        // First run or buffer underrun
+        log("⚠️ Buffer Empty. Generating Track...", "info");
+        const url = await generateFreshTrack(); // Generate 1
+        player.src = url;
+        player.play();
     }
 
-    const results = document.getElementById("results");
-
-    const card = document.createElement("div");
-    card.className = "card";
-
-    card.innerHTML = `
-        <div class="badge">${useLLM ? "🧠 Smart Mode" : "🎤 Exact Lyrics Mode"}</div>
-        <div class="skeleton" style="width:60%"></div>
-        <div class="skeleton" style="width:90%"></div>
-        <div class="skeleton" style="width:40%"></div>
-    `;
-
-    results.prepend(card);
-
-    // ========= PAYLOAD =========
-    const payload = {
-        prompt: prompt,
-        lyrics: lyrics,
-        num_samples: 1   // IMPORTANT → only one song
+    // WHILE current is playing, generate the NEXT one
+    player.onplay = () => {
+        log("⏳ Pre-generating NEXT track...", "info");
+        bufferNextTrack();
     };
 
-    if(useLLM){
-        payload.thinking = true;
-        payload.use_cot_caption = true;
-        payload.use_cot_language = true;
-        payload.use_format = true;
-        payload.sample_mode = true;
-    } else {
-        payload.thinking = false;
-        payload.use_cot_caption = false;
-        payload.use_cot_language = false;
-        payload.use_format = false;
-        payload.sample_mode = false;
-    }
+    // When ended, loop instantly
+    player.onended = () => {
+        log("✅ Track Finished. Switching...", "success");
+        playNext(); // Recursion
+    };
+}
 
-    try{
-        const r = await fetch(API + "/release_task", {
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        const j = await r.json();
-        const job = j.data.task_id;
-
-        poll(job, card);
-
-    }catch(e){
-        card.innerHTML = "❌ Failed to start generation.";
-        console.error(e);
+// 3. Generate a track in background
+async function bufferNextTrack() {
+    document.getElementById('stat-next').innerText = "Generating...";
+    document.getElementById('stat-next').style.color = "#facc15";
+    
+    try {
+        const url = await generateFreshTrack();
+        nextTrackUrl = url;
+        document.getElementById('stat-next').innerText = "Ready";
+        document.getElementById('stat-next').style.color = "#4ade80";
+        log("💾 Next track buffered and ready.", "success");
+    } catch(e) {
+        log("❌ Background Gen Failed: " + e.message, "error");
+        // Retry in 5s
+        setTimeout(bufferNextTrack, 5000);
     }
 }
 
-async function poll(job, card){
+// 4. Core Generation Logic (Sensors -> LLM -> Audio)
+async function generateFreshTrack() {
+    // A. Sensors
+    const coords = await getGPS();
+    const locData = await getRegion(coords);
+    const weaData = await getWeather(coords);
+    
+    // UI Updates
+    document.getElementById('stat-loc').innerText = locData.city;
+    document.getElementById('stat-wea').innerText = weaData + "°C";
+    
+    const hour = new Date().getHours();
+    const timeOfDay = hour < 12 ? "Morning" : (hour < 18 ? "Afternoon" : "Evening");
 
-    while(true){
-        await sleep(2000);
+    // B. AI Planning
+    const biz = document.getElementById('biz-type').value;
+    const context = `Location: ${locData.city}, ${locData.state}. Weather: ${weaData}C. Time: ${timeOfDay}. Venue: ${biz}.`;
+    
+    let prompt = await callLLM(
+        "You are a music AI. Based on the context, write a short, artistic music generation prompt (max 15 words). Return ONLY the prompt.",
+        context
+    );
+    
+    if(!prompt || prompt.length < 5) {
+        prompt = `Ambient ${timeOfDay} music for ${biz} with lo-fi beats`; // Fallback
+    }
+    log(`Next Mood: "${prompt}"`);
 
-        try{
-            const r = await fetch(API + "/query_result", {
-                method:"POST",
-                headers:{ "Content-Type":"application/json" },
-                body: JSON.stringify({
-                    task_id_list: JSON.stringify([job])
-                })
-            });
+    // C. Audio Synth
+    const taskId = await startMusicTask(prompt);
+    const audioUrl = await pollMusicTask(taskId);
+    return audioUrl;
+}
 
-            const j = await r.json();
-            const data = j.data[0];
+/* ======================================================
+   API HELPERS
+====================================================== */
+function getGPS() {
+    return new Promise((resolve) => {
+        if(!navigator.geolocation) resolve({lat: 19.07, lon: 72.87});
+        navigator.geolocation.getCurrentPosition(
+            p => resolve({lat: p.coords.latitude, lon: p.coords.longitude}),
+            e => resolve({lat: 19.07, lon: 72.87})
+        );
+    });
+}
 
-            if(data && data.status === 1){
+async function getRegion(c) {
+    try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${c.lat}&lon=${c.lon}`);
+        const d = await r.json();
+        return { city: d.address.city || "Unknown", state: d.address.state || "India" };
+    } catch(e) { return {city: "Mumbai", state: "Maharashtra"}; }
+}
 
-                const arr = JSON.parse(data.result);
-                const file = arr[0].file;
+async function getWeather(c) {
+    try {
+        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&current_weather=true`);
+        const d = await r.json();
+        return d.current_weather.temperature;
+    } catch(e) { return 25; }
+}
 
-                card.innerHTML = `
-                    <div class="badge">✅ Generated</div>
-                    <audio controls src="${API + file}"></audio>
-                `;
-                return;
+async function callLLM(sys, user) {
+    try {
+        const r = await fetch(LLM_ENDPOINT, {
+            method: "POST", headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({
+                model: "local-model",
+                messages: [{role:"system", content:sys}, {role:"user", content:user}],
+                temperature: 0.8
+            })
+        });
+        const d = await r.json();
+        return d.choices[0].message.content;
+    } catch(e) { console.error(e); return null; }
+}
+
+async function startMusicTask(prompt, lyrics="") {
+    const payload = {
+        prompt: prompt, n_samples: 1, thinking: true, sample_mode: true,
+        use_format: true, use_cot_caption: true, use_cot_language: true
+    };
+    if(lyrics.trim()) payload.lyrics = "The following lyrics are final:\n" + lyrics;
+
+    const r = await fetch(API_MUSIC + "/release_task", {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(payload)
+    });
+    if(!r.ok) throw new Error("Music Gen Failed");
+    const d = await r.json();
+    return d.data.task_id;
+}
+
+async function pollMusicTask(taskId) {
+    return new Promise((resolve, reject) => {
+        const i = setInterval(async () => {
+            try {
+                const r = await fetch(API_MUSIC + "/query_result", {
+                    method: "POST", headers: {"Content-Type":"application/json"},
+                    body: JSON.stringify({ task_id_list: JSON.stringify([taskId]) })
+                });
+                const d = await r.json();
+                const res = d.data[0];
+
+                if(res.status === 1) {
+                    clearInterval(i);
+                    resolve(API_MUSIC + JSON.parse(res.result)[0].file);
+                } else if(res.status === 2) {
+                    clearInterval(i);
+                    reject(new Error("Generation Failed"));
+                }
+            } catch(e) { clearInterval(i); reject(e); }
+        }, 3000);
+    });
+}
+
+/* ======================================================
+   MANUAL LOGIC
+====================================================== */
+async function runManual() {
+    const btn = document.getElementById('btn-manual');
+    const p = document.getElementById('man-prompt').value;
+    const l = document.getElementById('man-lyrics').value;
+    const div = document.getElementById('man-player');
+
+    if(!p) return alert("Enter prompt");
+    btn.disabled = true; btn.innerText = "Processing...";
+    div.innerHTML = "";
+
+    try {
+        const tid = await startMusicTask(p, l);
+        const url = await pollMusicTask(tid);
+        div.innerHTML = `<audio controls autoplay src="${url}" style="width:100%"></audio>`;
+        btn.disabled = false; btn.innerText = "Generate Once";
+    } catch(e) {
+        alert(e.message);
+        btn.disabled = false; btn.innerText = "Generate Once";
+    }
+}
+
+/* ======================================================
+   BACKGROUND ANIMATION
+====================================================== */
+const canvas = document.getElementById("bgCanvas");
+const ctx = canvas.getContext("2d");
+function resize() { canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+window.addEventListener("resize", resize); resize();
+
+let particles = Array.from({length:50}, () => ({
+    x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+    vx: (Math.random()-.5)*0.5, vy: (Math.random()-.5)*0.5
+}));
+
+function anim() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#8b5cf6";
+    particles.forEach(p => {
+        p.x+=p.vx; p.y+=p.vy;
+        if(p.x<0||p.x>canvas.width) p.vx*=-1;
+        if(p.y<0||p.y>canvas.height) p.vy*=-1;
+        ctx.globalAlpha = 0.3;
+        ctx.beginPath(); ctx.arc(p.x,p.y,2,0,Math.PI*2); ctx.fill();
+    });
+    ctx.strokeStyle = "rgba(139,92,246,0.1)";
+    for(let i=0; i<particles.length; i++) {
+        for(let j=i+1; j<particles.length; j++) {
+            const d = Math.hypot(particles[i].x-particles[j].x, particles[i].y-particles[j].y);
+            if(d < 100) {
+                ctx.beginPath(); ctx.moveTo(particles[i].x,particles[i].y);
+                ctx.lineTo(particles[j].x,particles[j].y); ctx.stroke();
             }
-
-        }catch(e){
-            console.log("Polling...");
         }
     }
+    requestAnimationFrame(anim);
 }
+anim();
 </script>
-
 </body>
 </html>
