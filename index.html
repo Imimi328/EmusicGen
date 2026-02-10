@@ -228,7 +228,7 @@ input:focus { outline: none; border-color: var(--primary); }
     <div class="card">
         <h1 style="margin-bottom:10px;">Setup Intelligence</h1>
         <p style="opacity:0.7; font-size:14px; margin-bottom:30px;">
-            Connect your local Microsoft Phi-4 model via Cloudflare.
+            Connect your local DeepSeek/Phi-4 model via Cloudflare Tunnel.
         </p>
         
         <div class="input-group">
@@ -359,7 +359,7 @@ input:focus { outline: none; border-color: var(--primary); }
 
                 <div style="margin-bottom:20px; display:flex; gap:10px; align-items:center;">
                     <input type="checkbox" id="man-smart" checked style="width:auto;">
-                    <label for="man-smart" style="margin:0;">Use Phi-4 Reasoning Engine</label>
+                    <label for="man-smart" style="margin:0;">Use Clinical AI Interpreter</label>
                 </div>
 
                 <button id="btn-manual" class="btn btn-primary" onclick="runManual()">Generate Therapeutic Track</button>
@@ -376,8 +376,6 @@ input:focus { outline: none; border-color: var(--primary); }
    STATE & CONFIG
 ====================================================== */
 let LLM_ENDPOINT = "";
-// Ensure this model string matches what your local server expects
-const MODEL_ID = "microsoft/phi-4-mini-reasoning";
 const MUSIC_API = "https://emusic.emogi.space";
 let nextTrackUrl = null;
 let isPlaying = false;
@@ -506,8 +504,8 @@ async function generateFreshTrack() {
 
     log("Consulting AI...");
     
-    // 2. AI (MSME/Retail Focus)
-    const sys = "You are a Retail Background Music AI. Create a short, artistic music generation prompt (max 15 words) that improves customer dwell time and spending based on the shop type and weather. Use instruments appropriate for Indian context if relevant. Enclose final prompt in <out> tags.";
+    // 2. AI (Updated STRICT Prompt for MSME)
+    const sys = "You are a Music Prompt Generator API. OUTPUT ONLY the prompt string. NO explanations. NO <think> tags. Format: <out>Instrument list and style</out>";
     let prompt = await callLLM(sys, context);
     
     if(!prompt || prompt.length < 5) prompt = `Ambient ${timeOfDay} music for ${biz} with soft indian flute`;
@@ -519,7 +517,7 @@ async function generateFreshTrack() {
 }
 
 /* ======================================================
-   API HELPERS
+   API HELPERS (FIXED FOR REASONING MODELS)
 ====================================================== */
 function getGPS() {
     return new Promise(r => {
@@ -546,22 +544,46 @@ async function getWeather(c) {
 
 async function callLLM(sys, user) {
     try {
+        // Updated payload to control "Reasoning" models
+        const payload = {
+            model: "microsoft/phi-4-mini-reasoning", // Targets your specific model
+            messages: [
+                {role:"system", content:sys}, 
+                {role:"user", content:user}
+            ],
+            temperature: 0.3, // Lower temp = less creative/chatty
+            max_tokens: 300   // Force brevity
+        };
+
         const r = await fetch(LLM_ENDPOINT, {
-            method: "POST", headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({
-                model: MODEL_ID, // UPDATED: uses microsoft/phi-4-mini-reasoning
-                messages: [{role:"system", content:sys}, {role:"user", content:user}],
-                temperature: 0.7
-            })
+            method: "POST", 
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(payload)
         });
+        
         if(!r.ok) return null;
         const d = await r.json();
-        let c = d.choices[0].message.content;
-        
-        // Remove <think> tags if the model outputs its reasoning chain
-        const m = c.match(/<out>(.*?)<\/out>/is);
-        return m ? m[1].trim() : c.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-    } catch { return null; }
+        let content = d.choices[0].message.content;
+
+        // --- CRITICAL FIX: STRIP REASONING TAGS ---
+        // Removes <think>...</think> blocks common in Phi-4/DeepSeek
+        content = content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+
+        // 1. Try to find content in <out> tags (Best case)
+        const match = content.match(/<out>(.*?)<\/out>/is);
+        if(match) return match[1].trim();
+
+        // 2. Fallback: Look for bold "Prompt:" label
+        const promptMatch = content.match(/\*\*Prompt:\*\*\s*(.*?)(\n|$)/i);
+        if(promptMatch) return promptMatch[1].trim();
+
+        // 3. Final Fallback: Return raw content (limited length)
+        return content.split('\n')[0].substring(0, 150);
+
+    } catch (e) { 
+        console.error("LLM Error:", e);
+        return null; 
+    }
 }
 
 async function startMusicTask(prompt, lyrics="") {
@@ -606,21 +628,33 @@ async function runManual() {
         let finalP = `${type} music for ${goal}`;
         
         if(smart) {
-            btn.innerText = "Reasoning (Phi-4)...";
-            // Therapeutic System Prompt
-            const sys = "You are a Clinical Music Therapist AI using reasoning. Analyze the therapy protocol and patient notes. Output a precise music generation prompt (instrumentation, BPM, scale/raga) that achieves the clinical goal. Enclose the final prompt in <out> tags.";
+            btn.innerText = "Formulating Protocol...";
+            
+            // --- STRICT SYSTEM PROMPT FOR THERAPY ---
+            // Forces the model to behave like an API, not a chatbot
+            const sys = `You are a Clinical Music API. 
+Your ONLY job is to convert clinical notes into a musical prompt.
+RULES:
+1. Do NOT explain your reasoning.
+2. Do NOT output <think> tags.
+3. OUTPUT ONLY the final prompt inside <out> tags.
+
+Example Input: "Patient sad, needs energy"
+Example Output: <out>Raga Bilawal, fast tempo 120bpm, energetic flute and tabla, bright mood</out>`;
+
             const res = await callLLM(sys, clinicalPrompt);
             if(res && res.length>5) finalP = res;
         }
         
         btn.innerText = "Synthesizing Therapy Track...";
+        // Therapists usually don't need lyrics, so we omit them or keep empty
         const tid = await startMusicTask(finalP, "");
         const url = await pollMusicTask(tid);
         
         document.getElementById('man-player').innerHTML = `<audio controls autoplay src="${url}" style="width:100%"></audio>`;
         btn.disabled = false; btn.innerText = "Generate Therapeutic Track";
     } catch(e) {
-        alert(e.message);
+        alert("Generation Error: " + e.message);
         btn.disabled = false; btn.innerText = "Generate Therapeutic Track";
     }
 }
