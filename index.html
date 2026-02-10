@@ -12,7 +12,7 @@
 :root {
     --primary: #8b5cf6;       /* Violet */
     --accent: #2dd4bf;        /* Teal for Therapy/Calm */
-    --glass: rgba(15, 23, 42, 0.9);
+    --glass: rgba(15, 23, 42, 0.95);
     --border: rgba(255, 255, 255, 0.1);
     --font: 'Segoe UI', system-ui, sans-serif;
 }
@@ -382,14 +382,14 @@ let isPlaying = false;
 
 /* ======================================================
    RAGA KNOWLEDGE BASE (Safety Net)
-   If AI fails or hallucinates, we use these hard-coded values.
+   Explicitly INSTRUMENTAL to avoid bad singing.
 ====================================================== */
 const RAGA_MAP = {
-    "Raga Therapy (Calming)": { raga: "Raga Darbari", bpm: "60", inst: "Bansuri Flute, Tanpura", mood: "Meditative" },
-    "Raga Therapy (Energizing)": { raga: "Raga Bhupali", bpm: "110", inst: "Sitar, Tabla", mood: "Joyful" },
-    "Binaural Beats": { raga: "40Hz Binaural", bpm: "60", inst: "Soft Pad, Sine Wave", mood: "Focus" },
-    "Solfeggio Frequencies": { raga: "528Hz Solfeggio", bpm: "Drone", inst: "Chimes, Bowl", mood: "Healing" },
-    "Nature Soundscape": { raga: "Ambient", bpm: "Free", inst: "Rain, Birds, Soft Piano", mood: "Nature" }
+    "Raga Therapy (Calming)": { raga: "Raga Darbari", bpm: "60", inst: "Bansuri Flute, Tanpura, No Vocals", mood: "Meditative" },
+    "Raga Therapy (Energizing)": { raga: "Raga Bhupali", bpm: "110", inst: "Sitar, Tabla, Instrumental", mood: "Joyful" },
+    "Binaural Beats": { raga: "40Hz Binaural", bpm: "60", inst: "Soft Pad, Sine Wave, No Vocals", mood: "Focus" },
+    "Solfeggio Frequencies": { raga: "528Hz Solfeggio", bpm: "Drone", inst: "Chimes, Bowl, Instrumental", mood: "Healing" },
+    "Nature Soundscape": { raga: "Ambient", bpm: "Free", inst: "Rain, Birds, Soft Piano, Instrumental", mood: "Nature" }
 };
 
 /* ======================================================
@@ -430,7 +430,7 @@ window.onload = () => {
 };
 
 /* ======================================================
-   RETAIL RADIO LOGIC
+   RETAIL RADIO LOGIC (INSTRUMENTAL ENFORCED)
 ====================================================== */
 function log(msg, type="info") {
     const c = document.getElementById('console');
@@ -492,10 +492,15 @@ async function generateFreshTrack() {
     const context = `Location: ${loc.city}, ${loc.state}. Weather: ${wea}C. Time: ${timeOfDay}. Business Type: ${biz}.`;
 
     log("Consulting AI...");
-    // STRICT Prompt for Retail
+    
+    // STRICT Prompt for Retail + Instrumental Enforcement
     const sys = "You are a Music Generator. Output ONLY a short prompt describing background music. No explanations. Format: <out>Instrument list and style</out>";
     let prompt = await callLLM(sys, context);
+    
+    // SAFETY: Append strict instrumental rule
     if(!prompt || prompt.length < 5) prompt = `Ambient ${timeOfDay} music for ${biz} with soft indian flute`;
+    prompt += ", instrumental only, no vocals, background music";
+
     log(`Mood: "${prompt}"`);
     
     const tid = await startMusicTask(prompt);
@@ -503,7 +508,7 @@ async function generateFreshTrack() {
 }
 
 /* ======================================================
-   THERAPY LOGIC (FIXED)
+   THERAPY LOGIC (INSTRUMENTAL ENFORCED)
 ====================================================== */
 async function runManual() {
     const btn = document.getElementById('btn-manual');
@@ -528,6 +533,7 @@ async function runManual() {
         STRICT RULES:
         1. NO Markdown.
         2. Output format: <out>Raga Name, Instrument, BPM, Mood</out>
+        3. Force Instrumental Only.
         
         Reference Data:
         - If Sad/Calming: Use Raga Darbari or Raga Bhairavi (60-70 BPM).
@@ -546,6 +552,9 @@ async function runManual() {
         }
     }
 
+    // --- CRITICAL FORCE: ALWAYS INSTRUMENTAL ---
+    finalPrompt += ", instrumental only, no vocals, meditation style";
+
     console.log("FINAL PROMPT SENDING TO MUSIC API:", finalPrompt);
     btn.innerText = `Generating: ${finalPrompt.substring(0,30)}...`;
 
@@ -561,7 +570,7 @@ async function runManual() {
 }
 
 /* ======================================================
-   AI PARSING (THE CRITICAL FIX)
+   AI PARSING (AGGRESSIVE CLEANING FOR PHI-4)
 ====================================================== */
 async function callLLM(sys, user) {
     try {
@@ -569,8 +578,7 @@ async function callLLM(sys, user) {
             model: "microsoft/phi-4-mini-reasoning", 
             messages: [{role:"system", content:sys}, {role:"user", content:user}],
             temperature: 0.1, 
-            // INCREASED TO 1500: Allows the model to finish "Thinking" so we can delete the thought block.
-            max_tokens: 1500 
+            max_tokens: 1500 // Allow "thinking" time
         };
 
         const r = await fetch(LLM_ENDPOINT, {
@@ -582,24 +590,26 @@ async function callLLM(sys, user) {
         const d = await r.json();
         let content = d.choices[0].message.content;
 
-        // 1. KILL the <think> block (Robust Regex)
-        // This handles cases where </think> might be malformed or missing
+        // 1. DELETE the <think> block (Robust Regex)
         content = content.replace(/<think>[\s\S]*?(<\/think>|$)/gi, "");
         
-        // 2. KILL Markdown code blocks
+        // 2. DELETE Markdown code blocks
         content = content.replace(/```[\s\S]*?```/g, (match) => {
             if(match.includes("<out>")) return match; 
             return ""; 
         });
         content = content.replace(/```/g, ""); 
+        content = content.replace(/\*\*Output:\*\*/gi, ""); 
 
-        // 3. Extract <out> tag content
-        const match = content.match(/<out>(.*?)<\/out>/is);
+        // 3. CLEANUP: Remove newlines to ensure single-line prompt
+        let cleanPrompt = content.replace(/\n/g, " ").trim();
+        
+        // 4. Extract <out> tag content
+        const match = cleanPrompt.match(/<out>(.*?)<\/out>/is);
         if(match) return match[1].trim();
 
-        // 4. Fallback: Take the last non-empty line
-        const lines = content.split('\n').filter(l => l.trim() !== "");
-        return lines[lines.length-1].trim();
+        // 5. Fallback: Take the cleaned string (truncated)
+        return cleanPrompt.substring(0, 200);
 
     } catch (e) { 
         console.error(e); 
@@ -632,7 +642,8 @@ async function getWeather(c) {
 }
 async function startMusicTask(prompt, lyrics="") {
     const payload = { prompt:prompt, n_samples:1, thinking:true, sample_mode:true, use_format:true, use_cot_caption:true, use_cot_language:true };
-    if(lyrics.trim()) payload.lyrics = "Lyrics:\n" + lyrics;
+    // FORCE EMPTY LYRICS for instrumental
+    payload.lyrics = ""; 
     const r = await fetch(MUSIC_API + "/release_task", { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
     const d = await r.json();
     return d.data.task_id;
