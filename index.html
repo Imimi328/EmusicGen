@@ -253,7 +253,7 @@ input:focus { outline: none; border-color: var(--primary); }
    CONFIG & STATE
 ====================================================== */
 let LLM_ENDPOINT = "";
-const MUSIC_API = "https://emusic.emogi.space";
+const MUSIC_API = "https://emusic.emogi.space"; // FIXED VARIABLE NAME
 let nextTrackUrl = null; // Buffer for the next song
 let isPlaying = false;
 
@@ -269,7 +269,10 @@ function saveConfig() {
     
     // Fix URL formatting
     if(url.endsWith("/")) url = url.slice(0, -1);
-    if(!url.includes("/v1/chat/completions")) url += "/v1/chat/completions";
+    // Ensure we are hitting the completion endpoint
+    if(!url.includes("/v1/chat/completions")) {
+        url += "/v1/chat/completions";
+    }
     
     LLM_ENDPOINT = url;
     localStorage.setItem("pdai_llm_url", document.getElementById('api-url').value);
@@ -431,17 +434,31 @@ async function getWeather(c) {
 
 async function callLLM(sys, user) {
     try {
+        console.log("Calling LLM at:", LLM_ENDPOINT);
         const r = await fetch(LLM_ENDPOINT, {
-            method: "POST", headers: {"Content-Type":"application/json"},
+            method: "POST", 
+            headers: {"Content-Type":"application/json"},
             body: JSON.stringify({
                 model: "local-model",
-                messages: [{role:"system", content:sys}, {role:"user", content:user}],
+                messages: [
+                    {role:"system", content:sys}, 
+                    {role:"user", content:user}
+                ],
                 temperature: 0.8
             })
         });
+        
+        if(!r.ok) {
+            console.error("LLM Error:", r.status, r.statusText);
+            return null;
+        }
+
         const d = await r.json();
         return d.choices[0].message.content;
-    } catch(e) { console.error(e); return null; }
+    } catch(e) { 
+        console.error("LLM Exception:", e); 
+        return null; 
+    }
 }
 
 async function startMusicTask(prompt, lyrics="") {
@@ -451,20 +468,28 @@ async function startMusicTask(prompt, lyrics="") {
     };
     if(lyrics.trim()) payload.lyrics = "The following lyrics are final:\n" + lyrics;
 
-    const r = await fetch(API_MUSIC + "/release_task", {
+    // FIXED: Using MUSIC_API instead of API_MUSIC
+    const r = await fetch(MUSIC_API + "/release_task", {
         method: "POST", headers: {"Content-Type":"application/json"},
         body: JSON.stringify(payload)
     });
-    if(!r.ok) throw new Error("Music Gen Failed");
+    if(!r.ok) throw new Error("Music Gen Failed (Server Error)");
     const d = await r.json();
     return d.data.task_id;
 }
 
 async function pollMusicTask(taskId) {
     return new Promise((resolve, reject) => {
+        let attempts = 0;
         const i = setInterval(async () => {
+            attempts++;
+            if(attempts > 60) { // 3 minute timeout
+                 clearInterval(i); 
+                 reject(new Error("Timeout generating music")); 
+            }
             try {
-                const r = await fetch(API_MUSIC + "/query_result", {
+                // FIXED: Using MUSIC_API instead of API_MUSIC
+                const r = await fetch(MUSIC_API + "/query_result", {
                     method: "POST", headers: {"Content-Type":"application/json"},
                     body: JSON.stringify({ task_id_list: JSON.stringify([taskId]) })
                 });
@@ -473,10 +498,10 @@ async function pollMusicTask(taskId) {
 
                 if(res.status === 1) {
                     clearInterval(i);
-                    resolve(API_MUSIC + JSON.parse(res.result)[0].file);
+                    resolve(MUSIC_API + JSON.parse(res.result)[0].file);
                 } else if(res.status === 2) {
                     clearInterval(i);
-                    reject(new Error("Generation Failed"));
+                    reject(new Error("Generation Failed on Server"));
                 }
             } catch(e) { clearInterval(i); reject(e); }
         }, 3000);
