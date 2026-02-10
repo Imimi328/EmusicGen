@@ -381,6 +381,18 @@ let nextTrackUrl = null;
 let isPlaying = false;
 
 /* ======================================================
+   RAGA KNOWLEDGE BASE (Local Fallback)
+   Prevents the AI from hallucinating fake Ragas or bad BPMs.
+====================================================== */
+const RAGA_MAP = {
+    "Raga Therapy (Calming)": { raga: "Raga Darbari", bpm: "60", inst: "Bansuri Flute, Tanpura", mood: "Meditative" },
+    "Raga Therapy (Energizing)": { raga: "Raga Bhupali", bpm: "110", inst: "Sitar, Tabla", mood: "Joyful" },
+    "Binaural Beats": { raga: "40Hz Binaural", bpm: "60", inst: "Soft Pad, Sine Wave", mood: "Focus" },
+    "Solfeggio Frequencies": { raga: "528Hz Solfeggio", bpm: "Drone", inst: "Chimes, Bowl", mood: "Healing" },
+    "Nature Soundscape": { raga: "Ambient", bpm: "Free", inst: "Rain, Birds, Soft Piano", mood: "Nature" }
+};
+
+/* ======================================================
    NAVIGATION LOGIC
 ====================================================== */
 function goTo(viewId) {
@@ -391,10 +403,8 @@ function goTo(viewId) {
 function saveConfig() {
     let url = document.getElementById('api-url').value.trim();
     if(!url) return alert("Please enter URL");
-    
     if(url.endsWith("/")) url = url.slice(0, -1);
     if(!url.includes("/v1/chat/completions")) url += "/v1/chat/completions";
-    
     LLM_ENDPOINT = url;
     localStorage.setItem("pdai_llm_url", document.getElementById('api-url').value);
     goTo('view-mode');
@@ -410,19 +420,17 @@ function switchTab(mode) {
     document.getElementById('tab-manual').style.display = 'none';
     document.getElementById('nav-auto').classList.remove('active');
     document.getElementById('nav-manual').classList.remove('active');
-
     document.getElementById('tab-' + mode).style.display = 'block';
     document.getElementById('nav-' + mode).classList.add('active');
 }
 
-// Load saved config
 window.onload = () => {
     const saved = localStorage.getItem("pdai_llm_url");
     if(saved) document.getElementById('api-url').value = saved;
 };
 
 /* ======================================================
-   INFINITE RADIO (MSME) LOGIC
+   RETAIL RADIO LOGIC
 ====================================================== */
 function log(msg, type="info") {
     const c = document.getElementById('console');
@@ -434,45 +442,28 @@ function log(msg, type="info") {
 async function startGaplessRadio() {
     if(isPlaying) return;
     isPlaying = true;
-    
     const btn = document.getElementById('btn-stream');
-    btn.disabled = true;
-    btn.innerText = "Broadcasting...";
+    btn.disabled = true; btn.innerText = "Broadcasting...";
     document.getElementById('live-indicator').style.display = 'flex';
     document.getElementById('auto-player-container').style.display = 'block';
-
-    // Unlock Audio
     const player = document.getElementById('player-main');
     player.play().catch(() => {});
-
     log("🚀 Starting Retail Audio Engine...", "success");
     await playNext();
 }
 
 async function playNext() {
     const player = document.getElementById('player-main');
-    
     if (nextTrackUrl) {
         log("▶️ Playing Buffered Track", "success");
-        player.src = nextTrackUrl;
-        player.play();
-        nextTrackUrl = null;
+        player.src = nextTrackUrl; player.play(); nextTrackUrl = null;
     } else {
         log("⚠️ Buffer Empty. Generating...", "info");
         const url = await generateFreshTrack();
-        player.src = url;
-        player.play();
+        player.src = url; player.play();
     }
-
-    player.onplay = () => {
-        log("⏳ Generating NEXT track...", "info");
-        bufferNextTrack();
-    };
-
-    player.onended = () => {
-        log("✅ Track Finished. Switching...", "success");
-        playNext();
-    };
+    player.onplay = () => { log("⏳ Generating NEXT track...", "info"); bufferNextTrack(); };
+    player.onended = () => { log("✅ Track Finished. Switching...", "success"); playNext(); };
 }
 
 async function bufferNextTrack() {
@@ -489,11 +480,9 @@ async function bufferNextTrack() {
 }
 
 async function generateFreshTrack() {
-    // 1. Sensors
     const coords = await getGPS();
     const loc = await getRegion(coords);
     const wea = await getWeather(coords);
-    
     document.getElementById('stat-loc').innerText = loc.city;
     document.getElementById('stat-wea').innerText = wea + "°C";
     
@@ -503,21 +492,123 @@ async function generateFreshTrack() {
     const context = `Location: ${loc.city}, ${loc.state}. Weather: ${wea}C. Time: ${timeOfDay}. Business Type: ${biz}.`;
 
     log("Consulting AI...");
-    
-    // 2. AI (Updated STRICT Prompt for MSME)
-    const sys = "You are a Music Prompt Generator API. OUTPUT ONLY the prompt string. NO explanations. NO <think> tags. Format: <out>Instrument list and style</out>";
+    // STRICT Prompt for Retail
+    const sys = "You are a Music Generator. Output ONLY a short prompt describing background music. No explanations. Format: <out>Instrument list and style</out>";
     let prompt = await callLLM(sys, context);
-    
     if(!prompt || prompt.length < 5) prompt = `Ambient ${timeOfDay} music for ${biz} with soft indian flute`;
     log(`Mood: "${prompt}"`);
-
-    // 3. Audio
+    
     const tid = await startMusicTask(prompt);
     return await pollMusicTask(tid);
 }
 
 /* ======================================================
-   API HELPERS (FIXED FOR REASONING MODELS)
+   THERAPY LOGIC (FIXED)
+====================================================== */
+async function runManual() {
+    const btn = document.getElementById('btn-manual');
+    const notes = document.getElementById('man-prompt').value; // e.g. "Sad because rain"
+    const type = document.getElementById('therapy-type').value; // e.g. "Raga Therapy (Calming)"
+    const goal = document.getElementById('therapy-goal').value;
+    const smart = document.getElementById('man-smart').checked;
+    
+    btn.disabled = true; btn.innerText = "Analyzing Clinical Data...";
+
+    // 1. Get Base Musical Theory from Local Map (Safety Net)
+    const theory = RAGA_MAP[type] || RAGA_MAP["Raga Therapy (Calming)"];
+    
+    // 2. AI Logic
+    let finalPrompt = `${theory.raga} ${theory.bpm}bpm ${theory.inst}`;
+
+    if(smart) {
+        // STRICT System Prompt to stop the AI from writing essays
+        const sys = `You are a Clinical Music API. 
+        Task: Merge the Clinical Protocol with Patient Notes to create a Music Prompt.
+        
+        STRICT RULES:
+        1. NO <think> tags.
+        2. NO Markdown (no \`\`\`).
+        3. NO Explanations.
+        4. Output format: <out>Raga Name, Instrument, BPM, Mood</out>
+        
+        Reference Data:
+        - If Sad/Calming: Use Raga Darbari or Raga Bhairavi (60-70 BPM).
+        - If Energizing: Use Raga Bhupali (100-120 BPM).
+        
+        Input: Protocol=${type}, Goal=${goal}, Notes=${notes}`;
+
+        try {
+            const res = await callLLM(sys, "Generate Prompt");
+            if(res && res.length > 5) {
+                finalPrompt = res;
+            }
+        } catch(e) {
+            console.warn("AI Failed, using manual fallback");
+        }
+    }
+
+    console.log("FINAL PROMPT SENDING TO MUSIC API:", finalPrompt);
+    btn.innerText = `Generating: ${finalPrompt.substring(0,30)}...`;
+
+    try {
+        const tid = await startMusicTask(finalPrompt, "");
+        const url = await pollMusicTask(tid);
+        document.getElementById('man-player').innerHTML = `<audio controls autoplay src="${url}" style="width:100%"></audio>`;
+        btn.disabled = false; btn.innerText = "Generate Therapeutic Track";
+    } catch(e) {
+        alert("Generation Error: " + e.message);
+        btn.disabled = false; btn.innerText = "Generate Therapeutic Track";
+    }
+}
+
+/* ======================================================
+   AI PARSING (THE CLEANER)
+====================================================== */
+async function callLLM(sys, user) {
+    try {
+        const payload = {
+            model: "microsoft/phi-4-mini-reasoning", 
+            messages: [{role:"system", content:sys}, {role:"user", content:user}],
+            temperature: 0.1, // FROZEN creativity to prevent chatting
+            max_tokens: 200
+        };
+
+        const r = await fetch(LLM_ENDPOINT, {
+            method: "POST", headers: {"Content-Type":"application/json"},
+            body: JSON.stringify(payload)
+        });
+        
+        if(!r.ok) throw new Error("LLM Offline");
+        const d = await r.json();
+        let content = d.choices[0].message.content;
+
+        // 1. KILL the <think> block
+        content = content.replace(/<think>[\s\S]*?<\/think>/gi, "");
+        
+        // 2. KILL Markdown code blocks (```plaintext ...)
+        content = content.replace(/```[\s\S]*?```/g, (match) => {
+            // If the tag is inside the code block, extract it
+            if(match.includes("<out>")) return match; 
+            return ""; 
+        });
+        content = content.replace(/```/g, ""); // Remove stray backticks
+
+        // 3. Extract <out>
+        const match = content.match(/<out>(.*?)<\/out>/is);
+        if(match) return match[1].trim();
+
+        // 4. Fallback: Take the last non-empty line
+        const lines = content.split('\n').filter(l => l.trim() !== "");
+        return lines[lines.length-1].trim();
+
+    } catch (e) { 
+        console.error(e); 
+        return null; 
+    }
+}
+
+/* ======================================================
+   API HELPERS
 ====================================================== */
 function getGPS() {
     return new Promise(r => {
@@ -525,7 +616,6 @@ function getGPS() {
         navigator.geolocation.getCurrentPosition(p=>r({lat:p.coords.latitude, lon:p.coords.longitude}), e=>r({lat:19.07, lon:72.87}));
     });
 }
-
 async function getRegion(c) {
     try {
         const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${c.lat}&lon=${c.lon}`);
@@ -533,7 +623,6 @@ async function getRegion(c) {
         return { city: d.address.city||"Mumbai", state: d.address.state||"MH" };
     } catch { return {city:"Mumbai", state:"MH"}; }
 }
-
 async function getWeather(c) {
     try {
         const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&current_weather=true`);
@@ -541,51 +630,6 @@ async function getWeather(c) {
         return d.current_weather.temperature;
     } catch { return 30; }
 }
-
-async function callLLM(sys, user) {
-    try {
-        // Updated payload to control "Reasoning" models
-        const payload = {
-            model: "microsoft/phi-4-mini-reasoning", // Targets your specific model
-            messages: [
-                {role:"system", content:sys}, 
-                {role:"user", content:user}
-            ],
-            temperature: 0.3, // Lower temp = less creative/chatty
-            max_tokens: 300   // Force brevity
-        };
-
-        const r = await fetch(LLM_ENDPOINT, {
-            method: "POST", 
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify(payload)
-        });
-        
-        if(!r.ok) return null;
-        const d = await r.json();
-        let content = d.choices[0].message.content;
-
-        // --- CRITICAL FIX: STRIP REASONING TAGS ---
-        // Removes <think>...</think> blocks common in Phi-4/DeepSeek
-        content = content.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-
-        // 1. Try to find content in <out> tags (Best case)
-        const match = content.match(/<out>(.*?)<\/out>/is);
-        if(match) return match[1].trim();
-
-        // 2. Fallback: Look for bold "Prompt:" label
-        const promptMatch = content.match(/\*\*Prompt:\*\*\s*(.*?)(\n|$)/i);
-        if(promptMatch) return promptMatch[1].trim();
-
-        // 3. Final Fallback: Return raw content (limited length)
-        return content.split('\n')[0].substring(0, 150);
-
-    } catch (e) { 
-        console.error("LLM Error:", e);
-        return null; 
-    }
-}
-
 async function startMusicTask(prompt, lyrics="") {
     const payload = { prompt:prompt, n_samples:1, thinking:true, sample_mode:true, use_format:true, use_cot_caption:true, use_cot_language:true };
     if(lyrics.trim()) payload.lyrics = "Lyrics:\n" + lyrics;
@@ -593,7 +637,6 @@ async function startMusicTask(prompt, lyrics="") {
     const d = await r.json();
     return d.data.task_id;
 }
-
 async function pollMusicTask(tid) {
     return new Promise((resolve, reject) => {
         let attempts = 0;
@@ -610,57 +653,7 @@ async function pollMusicTask(tid) {
 }
 
 /* ======================================================
-   MANUAL (THERAPY) LOGIC
-====================================================== */
-async function runManual() {
-    const btn = document.getElementById('btn-manual');
-    const notes = document.getElementById('man-prompt').value;
-    const type = document.getElementById('therapy-type').value;
-    const goal = document.getElementById('therapy-goal').value;
-    const smart = document.getElementById('man-smart').checked;
-    
-    btn.disabled = true; btn.innerText = "Analyzing Patient Data...";
-    
-    // Construct Clinical Context
-    const clinicalPrompt = `Protocol: ${type}. Goal: ${goal}. Patient Notes: ${notes}.`;
-
-    try {
-        let finalP = `${type} music for ${goal}`;
-        
-        if(smart) {
-            btn.innerText = "Formulating Protocol...";
-            
-            // --- STRICT SYSTEM PROMPT FOR THERAPY ---
-            // Forces the model to behave like an API, not a chatbot
-            const sys = `You are a Clinical Music API. 
-Your ONLY job is to convert clinical notes into a musical prompt.
-RULES:
-1. Do NOT explain your reasoning.
-2. Do NOT output <think> tags.
-3. OUTPUT ONLY the final prompt inside <out> tags.
-
-Example Input: "Patient sad, needs energy"
-Example Output: <out>Raga Bilawal, fast tempo 120bpm, energetic flute and tabla, bright mood</out>`;
-
-            const res = await callLLM(sys, clinicalPrompt);
-            if(res && res.length>5) finalP = res;
-        }
-        
-        btn.innerText = "Synthesizing Therapy Track...";
-        // Therapists usually don't need lyrics, so we omit them or keep empty
-        const tid = await startMusicTask(finalP, "");
-        const url = await pollMusicTask(tid);
-        
-        document.getElementById('man-player').innerHTML = `<audio controls autoplay src="${url}" style="width:100%"></audio>`;
-        btn.disabled = false; btn.innerText = "Generate Therapeutic Track";
-    } catch(e) {
-        alert("Generation Error: " + e.message);
-        btn.disabled = false; btn.innerText = "Generate Therapeutic Track";
-    }
-}
-
-/* ======================================================
-   BACKGROUND
+   BACKGROUND ANIMATION
 ====================================================== */
 const canvas = document.getElementById("bgCanvas");
 const ctx = canvas.getContext("2d");
