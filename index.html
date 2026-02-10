@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI-PDAI | The Future Sound of India</title>
+<title>AI-PDAI | MSME & Therapy Engine</title>
 
 <style>
 /* ======================================================
@@ -11,7 +11,7 @@
 ====================================================== */
 :root {
     --primary: #8b5cf6;       /* Violet */
-    --accent: #d946ef;        /* Pink */
+    --accent: #2dd4bf;        /* Teal for Therapy/Calm */
     --glass: rgba(15, 23, 42, 0.9);
     --border: rgba(255, 255, 255, 0.1);
     --font: 'Segoe UI', system-ui, sans-serif;
@@ -177,7 +177,7 @@ input:focus { outline: none; border-color: var(--primary); }
         <div class="hero-text">
             <h1>The Future Sound<br>of India</h1>
             <p>
-                Transforming chaotic soundscapes into structured, compliant, and culturally rich digital ecosystems for 63M+ MSMEs.
+                Dual-Core Audio Intelligence: Empowering 63M+ MSMEs with generative ambience and providing clinical-grade Music Therapy tools.
             </p>
             <div style="margin-top:30px; display:flex; gap:15px;">
                 <button class="btn btn-primary" style="width:auto; padding:12px 40px;" onclick="goTo('view-login')">Login</button>
@@ -228,7 +228,7 @@ input:focus { outline: none; border-color: var(--primary); }
     <div class="card">
         <h1 style="margin-bottom:10px;">Setup Intelligence</h1>
         <p style="opacity:0.7; font-size:14px; margin-bottom:30px;">
-            Connect your local DeepSeek model via Cloudflare Tunnel.
+            Connect your local Microsoft Phi-4 model via Cloudflare.
         </p>
         
         <div class="input-group">
@@ -244,21 +244,23 @@ input:focus { outline: none; border-color: var(--primary); }
 </div>
 
 <div id="view-mode" class="view-section">
-    <h1 style="font-size:36px; margin-bottom:10px;">Select Operation Mode</h1>
-    <p style="opacity:0.7;">Choose how you want to deploy the audio infrastructure.</p>
+    <h1 style="font-size:36px; margin-bottom:10px;">Select Module</h1>
+    <p style="opacity:0.7;">Choose your deployment environment.</p>
 
     <div class="mode-grid">
-        <div class="mode-option" onclick="enterDashboard('manual')">
-            <h2 style="margin-bottom:10px;">Manual Control 🎛️</h2>
+        <div class="mode-option" style="border-color:var(--primary);" onclick="enterDashboard('auto')">
+            <h2 style="margin-bottom:10px;">MSME Radio 📻</h2>
             <p style="font-size:14px; line-height:1.6; opacity:0.8;">
-                Directly manage generation parameters. Ideal for creating specific brand assets, jingles, or testing prompts.
+                <strong>For Shops & Retail.</strong><br>
+                Automated background streams to increase customer dwell time. Uses Weather/Time sensors.
             </p>
         </div>
 
-        <div class="mode-option" style="border-color:var(--primary);" onclick="enterDashboard('auto')">
-            <h2 style="margin-bottom:10px;">Infinite Radio 🤖</h2>
+        <div class="mode-option" onclick="enterDashboard('manual')">
+            <h2 style="margin-bottom:10px;">Music Therapy 🧘</h2>
             <p style="font-size:14px; line-height:1.6; opacity:0.8;">
-                Autonomous "Set and Forget" mode. The AI scans GPS, Weather, and Time to generate a continuous, gapless stream.
+                <strong>For Clinicians & Hospitals.</strong><br>
+                Manual control for Raga Therapy, Binaural Beats, and patient state management.
             </p>
         </div>
     </div>
@@ -271,8 +273,8 @@ input:focus { outline: none; border-color: var(--primary); }
         
         <div class="sidebar">
             <h2 style="margin:0 0 20px 0;">AI-PDAI</h2>
-            <div class="nav-item" id="nav-auto" onclick="switchTab('auto')">🤖 Infinite Radio</div>
-            <div class="nav-item" id="nav-manual" onclick="switchTab('manual')">🎛️ Manual Studio</div>
+            <div class="nav-item" id="nav-auto" onclick="switchTab('auto')">🏬 MSME Radio</div>
+            <div class="nav-item" id="nav-manual" onclick="switchTab('manual')">🧠 Music Therapy</div>
             <div class="nav-item" onclick="location.reload()" style="margin-top:auto; color:#ef4444;">🔌 Disconnect</div>
         </div>
 
@@ -280,11 +282,11 @@ input:focus { outline: none; border-color: var(--primary); }
             
             <div id="tab-auto" style="display:none;">
                 <div class="live-badge" id="live-indicator">
-                    <div class="live-dot"></div> LIVE BROADCAST
+                    <div class="live-dot"></div> RETAIL BROADCAST
                 </div>
 
-                <h1 style="margin-top:0;">Infinite Context Radio</h1>
-                <p style="opacity:0.6; margin-bottom:25px;">Gapless, sensor-driven generation.</p>
+                <h1 style="margin-top:0;">MSME Context Stream</h1>
+                <p style="opacity:0.6; margin-bottom:25px;">Gapless, sensor-driven ambience for businesses.</p>
 
                 <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:15px; margin-bottom:25px;">
                     <div style="background:rgba(0,0,0,0.2); padding:15px; border-radius:10px;">
@@ -304,9 +306,11 @@ input:focus { outline: none; border-color: var(--primary); }
                 <div class="input-group">
                     <span class="label">Business Type</span>
                     <select id="biz-type">
+                        <option value="Kirana Store">Kirana Store (General)</option>
                         <option value="Luxury Hotel Lobby">Luxury Hotel Lobby</option>
-                        <option value="Busy Cafe">Busy Urban Cafe</option>
-                        <option value="Retail Store">Fashion Retail Store</option>
+                        <option value="Busy Urban Cafe">Urban Cafe</option>
+                        <option value="Fashion Retail Store">Fashion Retail Store</option>
+                        <option value="Handicraft Showroom">Handicraft Showroom</option>
                     </select>
                 </div>
 
@@ -318,25 +322,48 @@ input:focus { outline: none; border-color: var(--primary); }
                 </div>
 
                 <div class="console-box" id="console">
-                    <div>System Ready.</div>
+                    <div>System Ready for MSME Deployment.</div>
                 </div>
             </div>
 
             <div id="tab-manual" style="display:none;">
-                <h1 style="margin-top:0;">Manual Studio</h1>
-                <div class="input-group">
-                    <span class="label">Prompt</span>
-                    <textarea id="man-prompt" style="height:80px;" placeholder="Describe the sound..."></textarea>
+                <h1 style="margin-top:0;">Clinical Therapy Console</h1>
+                <p style="opacity:0.6; margin-bottom:25px;">AI-assisted generation for patient intervention.</p>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                    <div class="input-group">
+                        <span class="label">Therapy Protocol</span>
+                        <select id="therapy-type">
+                            <option value="Raga Therapy (Calming)">Raga Therapy (Anxiety Relief)</option>
+                            <option value="Raga Therapy (Energizing)">Raga Therapy (Depression)</option>
+                            <option value="Binaural Beats">Binaural Beats (Alpha/Theta)</option>
+                            <option value="Solfeggio Frequencies">Solfeggio Frequencies</option>
+                            <option value="Nature Soundscape">Nature Soundscape</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <span class="label">Clinical Goal</span>
+                        <select id="therapy-goal">
+                            <option value="Deep Relaxation">Deep Relaxation</option>
+                            <option value="Focus & Cognitive Load">Focus & Cognition</option>
+                            <option value="Sleep Induction">Sleep Induction</option>
+                            <option value="Mood Elevation">Mood Elevation</option>
+                        </select>
+                    </div>
                 </div>
+
                 <div class="input-group">
-                    <span class="label">Lyrics (Optional)</span>
-                    <textarea id="man-lyrics" style="height:60px;" placeholder="Vocal lyrics..."></textarea>
+                    <span class="label">Patient Notes / Specific Needs</span>
+                    <textarea id="man-prompt" style="height:80px;" placeholder="e.g. Patient is hyperactive, requires slow tempo, minimal percussion, 432Hz tuning..."></textarea>
                 </div>
+
                 <div style="margin-bottom:20px; display:flex; gap:10px; align-items:center;">
                     <input type="checkbox" id="man-smart" checked style="width:auto;">
-                    <label for="man-smart" style="margin:0;">Enhance with DeepSeek AI</label>
+                    <label for="man-smart" style="margin:0;">Use Phi-4 Reasoning Engine</label>
                 </div>
-                <button id="btn-manual" class="btn btn-primary" onclick="runManual()">Generate Track</button>
+
+                <button id="btn-manual" class="btn btn-primary" onclick="runManual()">Generate Therapeutic Track</button>
+                
                 <div id="man-player" style="margin-top:20px;"></div>
             </div>
 
@@ -349,6 +376,8 @@ input:focus { outline: none; border-color: var(--primary); }
    STATE & CONFIG
 ====================================================== */
 let LLM_ENDPOINT = "";
+// Ensure this model string matches what your local server expects
+const MODEL_ID = "microsoft/phi-4-mini-reasoning";
 const MUSIC_API = "https://emusic.emogi.space";
 let nextTrackUrl = null;
 let isPlaying = false;
@@ -395,7 +424,7 @@ window.onload = () => {
 };
 
 /* ======================================================
-   INFINITE RADIO LOGIC
+   INFINITE RADIO (MSME) LOGIC
 ====================================================== */
 function log(msg, type="info") {
     const c = document.getElementById('console');
@@ -418,7 +447,7 @@ async function startGaplessRadio() {
     const player = document.getElementById('player-main');
     player.play().catch(() => {});
 
-    log("🚀 Starting Radio Engine...", "success");
+    log("🚀 Starting Retail Audio Engine...", "success");
     await playNext();
 }
 
@@ -473,15 +502,15 @@ async function generateFreshTrack() {
     const hour = new Date().getHours();
     const timeOfDay = hour < 12 ? "Morning" : (hour < 18 ? "Afternoon" : "Evening");
     const biz = document.getElementById('biz-type').value;
-    const context = `Location: ${loc.city}, ${loc.state}. Weather: ${wea}C. Time: ${timeOfDay}. Venue: ${biz}.`;
+    const context = `Location: ${loc.city}, ${loc.state}. Weather: ${wea}C. Time: ${timeOfDay}. Business Type: ${biz}.`;
 
     log("Consulting AI...");
     
-    // 2. AI (With <out> tag enforcement)
-    const sys = "You are a music AI. Based on the context, generate a short, artistic music generation prompt (max 15 words). Enclose the final prompt in <out> tags. Example: <out>Slow jazz</out>.";
+    // 2. AI (MSME/Retail Focus)
+    const sys = "You are a Retail Background Music AI. Create a short, artistic music generation prompt (max 15 words) that improves customer dwell time and spending based on the shop type and weather. Use instruments appropriate for Indian context if relevant. Enclose final prompt in <out> tags.";
     let prompt = await callLLM(sys, context);
     
-    if(!prompt || prompt.length < 5) prompt = `Ambient ${timeOfDay} music for ${biz}`;
+    if(!prompt || prompt.length < 5) prompt = `Ambient ${timeOfDay} music for ${biz} with soft indian flute`;
     log(`Mood: "${prompt}"`);
 
     // 3. Audio
@@ -520,7 +549,7 @@ async function callLLM(sys, user) {
         const r = await fetch(LLM_ENDPOINT, {
             method: "POST", headers: {"Content-Type":"application/json"},
             body: JSON.stringify({
-                model: "local-model",
+                model: MODEL_ID, // UPDATED: uses microsoft/phi-4-mini-reasoning
                 messages: [{role:"system", content:sys}, {role:"user", content:user}],
                 temperature: 0.7
             })
@@ -528,6 +557,8 @@ async function callLLM(sys, user) {
         if(!r.ok) return null;
         const d = await r.json();
         let c = d.choices[0].message.content;
+        
+        // Remove <think> tags if the model outputs its reasoning chain
         const m = c.match(/<out>(.*?)<\/out>/is);
         return m ? m[1].trim() : c.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
     } catch { return null; }
@@ -557,32 +588,40 @@ async function pollMusicTask(tid) {
 }
 
 /* ======================================================
-   MANUAL LOGIC
+   MANUAL (THERAPY) LOGIC
 ====================================================== */
 async function runManual() {
     const btn = document.getElementById('btn-manual');
-    const p = document.getElementById('man-prompt').value;
-    const l = document.getElementById('man-lyrics').value;
+    const notes = document.getElementById('man-prompt').value;
+    const type = document.getElementById('therapy-type').value;
+    const goal = document.getElementById('therapy-goal').value;
     const smart = document.getElementById('man-smart').checked;
     
-    if(!p) return alert("Enter prompt");
-    btn.disabled = true; btn.innerText = "Processing...";
+    btn.disabled = true; btn.innerText = "Analyzing Patient Data...";
     
+    // Construct Clinical Context
+    const clinicalPrompt = `Protocol: ${type}. Goal: ${goal}. Patient Notes: ${notes}.`;
+
     try {
-        let finalP = p;
+        let finalP = `${type} music for ${goal}`;
+        
         if(smart) {
-            btn.innerText = "Enhancing...";
-            const res = await callLLM("Rewrite for music AI. Enclose in <out> tags.", p);
+            btn.innerText = "Reasoning (Phi-4)...";
+            // Therapeutic System Prompt
+            const sys = "You are a Clinical Music Therapist AI using reasoning. Analyze the therapy protocol and patient notes. Output a precise music generation prompt (instrumentation, BPM, scale/raga) that achieves the clinical goal. Enclose the final prompt in <out> tags.";
+            const res = await callLLM(sys, clinicalPrompt);
             if(res && res.length>5) finalP = res;
         }
-        btn.innerText = "Generating...";
-        const tid = await startMusicTask(finalP, l);
+        
+        btn.innerText = "Synthesizing Therapy Track...";
+        const tid = await startMusicTask(finalP, "");
         const url = await pollMusicTask(tid);
+        
         document.getElementById('man-player').innerHTML = `<audio controls autoplay src="${url}" style="width:100%"></audio>`;
-        btn.disabled = false; btn.innerText = "Generate Track";
+        btn.disabled = false; btn.innerText = "Generate Therapeutic Track";
     } catch(e) {
         alert(e.message);
-        btn.disabled = false; btn.innerText = "Generate Track";
+        btn.disabled = false; btn.innerText = "Generate Therapeutic Track";
     }
 }
 
